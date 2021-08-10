@@ -1,3 +1,3 @@
-module cdrmaguire.com/tbshill/csv
+module github.com/tbshill/csv
 
 go 1.13
