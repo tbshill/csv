@@ -1,4 +1,4 @@
-package github.com/tbshill/csv
+package csv
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package github.com/tbshill/csv
+package csv
 
 // TODO(tbshill): Move this outside of gocdrm into a public gopackage
 // TODO(tbshill): Encoding multiline elements
