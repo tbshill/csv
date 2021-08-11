@@ -104,6 +104,11 @@ func TestDecoder_Decode(t *testing.T) {
 	for _, test := range tests {
 
 		t.Run(test.name, func(t *testing.T) {
+			/*defer func() {
+				if err := recover(); err != nil {
+					t.Fatal(err)
+				}
+			}()*/
 			reader := strings.NewReader(test.input)
 
 			decoder := NewDecoder(",", "\n", reader)
@@ -113,10 +118,11 @@ func TestDecoder_Decode(t *testing.T) {
 			for decoder.Scan() {
 				var decoded expectStruct
 				if err := decoder.Decode(&decoded); err != nil {
-					t.Fatal(err)
+					t.Fatalf("%v\n\t(%+v)\n\t(%s)",err, decoded, decoder.Text())
 				}
 
 				records = append(records, decoded)
+				t.Log(decoded)
 
 			}
 
@@ -159,6 +165,11 @@ func TestColsToRow(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.row, func(t *testing.T) {
+			defer func() {
+				if err := recover(); err != nil {
+					t.Fatal(err)
+				}
+			}()
 			row := colsToRow(test.cols, ",")
 			if row != test.row {
 				t.Errorf("Expected row: (%s), Got (%s)\n", test.row, row)
@@ -200,16 +211,94 @@ func TestRowToCols(t *testing.T) {
 			row:  `Hello world,"Column 2",""`,
 			cols: []string{"Hello world", "Column 2", ""},
 		},
+		{
+			row: `Hello world,"Column
+2",""`,
+			cols: []string{"Hello world", "Column\n2", ""},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.row, func(t *testing.T) {
+			defer func() {
+				if err := recover(); err != nil {
+					t.Fatal(err)
+				}
+			}()
 			cols := rowToCols(test.row, ",")
 			if ok := reflect.DeepEqual(cols, test.cols); !ok {
-				t.Errorf("rowToCols Failed: (%s) -- [%s]\n", test.row, strings.Join(test.cols, ","))
+				t.Errorf("rowToCols Failed: (%s) -- [%s]\n", strings.Join(cols, "::"), strings.Join(test.cols, "::"))
 			}
 		})
 	}
+}
+
+func TestIndexOfQuotedEndOfLine(t *testing.T) {
+	tests := []struct {
+		input string
+		firstToken string
+		expect int
+	} {
+		{
+			input: "",
+			firstToken:"",
+			expect: -1,
+		},
+		{
+			input: "\n",
+			firstToken:"",
+			expect: 0,
+		},
+		{
+			input: "01234\n",
+			firstToken:"01234",
+			expect: 5,
+		},
+		{
+			input: "\"\"234\n",
+			firstToken: "\"\"234",
+			expect: 5,
+		},
+		{
+			input: "\"234\n\"",
+			firstToken: "\"234\n\"",
+			expect: -1,
+		},
+		{
+			input: "\"234\n\"\n",
+			firstToken: "\"234\n\"",
+			expect: 6,
+		},
+		{
+			input: "\"234\n\"\n12345",
+			firstToken: "\"234\n\"",
+			expect: 6,
+		},
+		{
+			input: "\"Hel,lo\",World\nWelcome,Mars",
+			firstToken: "\"Hel,lo\",World",
+			expect: 14,
+		},
+	}
+
+	for i, test := range tests{
+		t.Run(test.input, func(t *testing.T) {
+			if idx := indexOfQuotedEndOfLine([]byte(test.input)); idx != test.expect {
+				t.Errorf("%d; expected %d. got %d", i, test.expect, idx)
+			}
+
+			_, token, err := ScanQuotedLine([]byte(test.input), true)
+			if err != nil {
+				t.Error(err)
+			}
+			if string(token) != test.firstToken {
+				t.Errorf("got %s. expected %s", token, test.firstToken)
+			}
+
+		})
+	}
+
+
 }
 
 /*

@@ -2,15 +2,21 @@ package csv
 
 // TODO(tbshill): Move this outside of gocdrm into a public gopackage
 // TODO(tbshill): Encoding multiline elements
+
 import (
 	"bufio"
 	"fmt"
 	"io"
 	"reflect"
 	"strings"
+	"errors"
 )
 
 const CSVTagName = "csv"
+
+var (
+	ErrInvalidSchema = errors.New("row did not have the same number of fields as the struct")
+)
 
 // Decoder is a structure that will read a deliniated string into a structure
 type Decoder struct {
@@ -74,7 +80,6 @@ const (
 	secondQuoteState
 	innerColState
 )
-
 func rowToCols(row, del string) []string {
 
 	var sb strings.Builder
@@ -148,14 +153,66 @@ func rowToCols(row, del string) []string {
 	return cols
 }
 
+func ScanQuotedLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+
+	if i := indexOfQuotedEndOfLine(data); i >= 0 {
+		return i + 1, dropCR(data[0:i]), nil
+	}
+
+	if atEOF {
+		return len(data), dropCR(data), nil
+	}
+
+	return 0, nil, nil
+}
+
+func indexOfQuotedEndOfLine(data []byte) int {
+	char := 0
+	quoted := 1
+
+	state := char
+
+	for i, r := range data {
+		switch state {
+		case char:
+			switch r {
+			case '\n':
+				return i
+			case '"':
+				state = quoted
+			}
+		case quoted:
+			switch r {
+			case '"':
+				state = char
+			}
+		}
+	}
+
+	return -1
+}
+
+func dropCR(data []byte) []byte {
+	if len(data) > 0 && data[len(data)-1] == '\r' {
+		return data[0: len(data)-1]
+	}
+	return data
+}
+
 // NewDecoder returns a new csv Decoder. 'del' is the delimeter, 'nl' is the
 // newline character, and r is the source to read from
 func NewDecoder(del, nl string, r io.Reader) *Decoder {
-	return &Decoder{
+	decoder := &Decoder{
 		del: del,
 		nl:  nl,
 		s:   bufio.NewScanner(r),
 	}
+
+	decoder.s.Split(ScanQuotedLine)
+	return decoder
 }
 
 // Decode takes the string record that was loaded by Scan() and marshals it
@@ -165,6 +222,10 @@ func (d *Decoder) Decode(obj interface{}) error {
 	columns := rowToCols(d.row, d.del)
 
 	v := reflect.ValueOf(obj).Elem()
+
+	if v.NumField() != len(columns) {
+		return ErrInvalidSchema
+	}
 
 	for i, column := range columns {
 		v.Field(i).SetString(column)
@@ -182,6 +243,10 @@ func (d *Decoder) Scan() bool {
 	}
 
 	return ok
+}
+
+func (d *Decoder) Text() string {
+	return d.row
 }
 
 // Encoder is a utility that will encode a structure into a deliniated string.
