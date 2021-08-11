@@ -216,6 +216,10 @@ func TestRowToCols(t *testing.T) {
 2",""`,
 			cols: []string{"Hello world", "Column\n2", ""},
 		},
+		{
+			row: `Submission Date,Reference Number,First Name,Middle Initial,Last Name,Date of Birth,Gender,Race,Ethnicity,Temporary Member ID,Date of Service,Patient Account Number,Address Line 1,Address Line 2,City,State,Zip,Group TIN,Insurance Information,Coverage Timeline`,
+			cols: []string{"Submission Date","Reference Number", "First Name", "Middle Initial", "Last Name", "Date of Birth", "Gender", "Race", "Ethnicity", "Temporary Member ID", "Date of Service", "Patient Account Number", "Address Line 1", "Address Line 2", "City", "State", "Zip", "Group TIN", "Insurance Information", "Coverage Timeline"},
+		},
 	}
 
 	for _, test := range tests {

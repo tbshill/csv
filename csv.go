@@ -224,7 +224,7 @@ func (d *Decoder) Decode(obj interface{}) error {
 	v := reflect.ValueOf(obj).Elem()
 
 	if v.NumField() != len(columns) {
-		return ErrInvalidSchema
+		return fmt.Errorf("%w: Struct: %d, Fields: %d\n", ErrInvalidSchema, v.NumField(), len(columns))
 	}
 
 	for i, column := range columns {
