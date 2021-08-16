@@ -9,6 +9,13 @@ import (
 	"io"
 )
 
+var (
+	outfileName string
+	pkg string
+	dataType string
+	importsRaw string
+	skipHeader bool
+)
 
 var template = `
 package %s
@@ -79,6 +86,7 @@ func Load%s(filenames []string, parallelism int, dl, nl string) (chan *%s, chan 
 
 				rowNum := 0
 				decoder := csv.NewDecoder(dl, nl, f)
+				%s
 				for decoder.Scan() {
 					rowNum++
 					var data %s
@@ -120,6 +128,10 @@ func generateImports(imports []string) string {
 func generateTemplate(out io.Writer, genCommand, pkg, dataType string, imports []string) {
 	csvRecordName := generateCsvRecordName(dataType)
 	importStr := generateImports(imports)
+	skipLine := ""
+	if skipHeader {
+		skipLine = "decoder.Scan() // Skip Header"
+	}
 	fmt.Fprintf(out, template,
 		pkg,
 		genCommand,
@@ -134,18 +146,14 @@ func generateTemplate(out io.Writer, genCommand, pkg, dataType string, imports [
 		csvRecordName, // 6
 		csvRecordName, // 7
 		csvRecordName,
+		skipLine,
 		dataType,
 		csvRecordName) // 8
 }
 
-var (
-	outfileName string
-	pkg string
-	dataType string
-	importsRaw string
-)
 
 func main() {
+	flag.BoolVar(&skipHeader, "skip-header", false, "-skip-header skips the first row of the csv file")
 	flag.StringVar(&outfileName, "out", "", "-out csvloader.go")
 	flag.StringVar(&pkg, "pkg", "", "-pkg main")
 	flag.StringVar(&dataType, "data", "", "-data schema.CareCloudLabExtractRecord")
