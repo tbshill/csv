@@ -107,11 +107,14 @@ func generateCsvRecordName(dataType string) string {
 }
 
 func generateImports(imports []string) string {
-	quoted := make([]string, len(imports))
-	for i, v := range imports{
-		quoted[i] = "\""+v+"\""
+	if len(imports) > 0 && imports[0] != ""{
+		quoted := make([]string, len(imports))
+		for i, v := range imports{
+			quoted[i] = "\""+v+"\""
+		}
+		return strings.Join(quoted,"\n\t")
 	}
-	return strings.Join(quoted,"\n\t")
+	return ""
 }
 
 func generateTemplate(out io.Writer, genCommand, pkg, dataType string, imports []string) {
