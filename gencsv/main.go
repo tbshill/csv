@@ -50,7 +50,8 @@ func New%s(filename string, row int, data %s) *%s {
 		}
 }
 
-func Load%s(filenames []string, parallelism int, dl, nl string) (chan *%s, chan error){
+
+func Load%s(filenames []string, parallelism int, dl, nl string, onFileFinish func(filename string, totalRows int)) (chan *%s, chan error){
 	recordChan, errChan := make(chan *%s), make(chan error)
 	go func(){
 		defer close(recordChan)
@@ -78,13 +79,14 @@ func Load%s(filenames []string, parallelism int, dl, nl string) (chan *%s, chan 
 					return
 				}
 
-				defer func(){
+				rowNum := 0
+				defer func(rowNum int){
 					if err := f.Close(); err != nil{
 						errChan <- err
 					}
-				}()
+					onFileFinish(filename, rowNum)
+				}(rowNum)
 
-				rowNum := 0
 				decoder := csv.NewDecoder(dl, nl, f)
 				%s
 				for decoder.Scan() {
